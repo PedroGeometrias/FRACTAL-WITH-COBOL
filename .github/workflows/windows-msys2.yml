@@ -20,20 +20,23 @@ jobs:
             mingw-w64-x86_64-SDL2
             mingw-w64-x86_64-binutils
             pkgconf
-            zip
             awk
             sed
             findutils
+            zip
 
       - name: Build (cobc drives gcc)
         shell: msys2 {0}
         run: |
           set -euxo pipefail
           export PKG_CONFIG_PATH=/mingw64/lib/pkgconfig
-          cobc -x -free -O3 -flto \
+          # Show what pkgconf returns (useful for troubleshooting)
+          pkgconf --cflags --libs sdl2
+          # NOTE: no -flto; set output name explicitly
+          cobc -x -free -O2 \
+            -o burn_ship.exe \
             main.cob sdl_expose.c \
             $(pkgconf --cflags --libs sdl2)
-          mv a.exe burn_ship.exe || true
 
       - name: Bundle runtime DLLs (objdump-based)
         shell: msys2 {0}
@@ -42,10 +45,9 @@ jobs:
           mkdir -p dist
           cp burn_ship.exe dist/
 
-          # List dependent DLL names from the PE headers
+          # List dependent DLLs from PE headers and copy them beside the exe
           DLLS=$(objdump -p dist/burn_ship.exe | awk '/DLL Name:/ {print $3}')
           for dll in $DLLS; do
-            # Try common locations
             for root in /mingw64/bin /usr/bin; do
               if [ -f "$root/$dll" ]; then
                 cp -n "$root/$dll" dist/
@@ -54,14 +56,16 @@ jobs:
             done
           done
 
-          # Safety net: ensure core DLLs are present
+          # Safety net: ensure SDL2 and GnuCOBOL runtime are present
           cp -n /mingw64/bin/SDL2.dll dist/ || true
           ls /mingw64/bin/libcob-*.dll | head -n1 | xargs -I{} cp -n {} dist/ || true
 
-          # Record tool versions for reproducibility
-          pkgconf --modversion sdl2 > dist/VERSIONS.txt
-          cobc -v >> dist/VERSIONS.txt
-          gcc --version | head -n1 >> dist/VERSIONS.txt
+          # Record versions for reproducibility
+          {
+            echo "SDL2: $(pkgconf --modversion sdl2)"
+            cobc -v
+            gcc --version | head -n1
+          } > dist/VERSIONS.txt
 
           (cd dist && zip -9r ../burn_ship_win64.zip .)
 
@@ -71,3 +75,4 @@ jobs:
           name: burn_ship_win64
           path: burn_ship_win64.zip
           retention-days: 90
+
