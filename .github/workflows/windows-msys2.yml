@@ -25,40 +25,40 @@ jobs:
             findutils
             zip
 
-      - name: Build (cobc drives gcc; no SDL2main)
+      - name: Build (no SDL2main; set COB_CONFIG_DIR)
         shell: msys2 {0}
         run: |
           set -euxo pipefail
+
+          # Point cobc to its config (Windows-style path)
+          export COB_CONFIG_DIR="$(cygpath -w /mingw64/share/gnucobol/config)"
+
           export PKG_CONFIG_PATH=/mingw64/lib/pkgconfig
-          # Get clean flags: CFLAGS only; LIBS without SDL2main
-          CFLAGS="$(pkgconf --cflags sdl2) -DSDL_MAIN_HANDLED"
+          # Clean flags: remove -Dmain=SDL_main; keep SDL_MAIN_HANDLED
+          CFLAGS="$(pkgconf --cflags sdl2 | sed 's/-Dmain=SDL_main//g') -DSDL_MAIN_HANDLED"
+          # Drop SDL2main from libs
           LIBS="$(pkgconf --libs-only-l sdl2 | sed 's/-lSDL2main//g')"
+
           echo "CFLAGS=${CFLAGS}"
           echo "LIBS=${LIBS}"
 
-          # Build; no -flto; explicit output name
           cobc -x -free -O2 -o burn_ship.exe \
             main.cob sdl_expose.c \
             ${CFLAGS} ${LIBS}
 
-          # If for any reason cobc chose another name, normalize it
-          if [ ! -f burn_ship.exe ]; then
-            CAND=$(ls -1 *.exe 2>/dev/null | head -n1 || true)
-            if [ -n "${CAND}" ]; then mv "${CAND}" burn_ship.exe; fi
-          fi
-
+          # Sanity: list outputs
           ls -al
 
       - name: Bundle runtime DLLs (objdump-based)
         shell: msys2 {0}
         run: |
           set -euxo pipefail
-          test -f burn_ship.exe  # hard fail if missing
+          test -f burn_ship.exe
 
           mkdir -p dist
           cp burn_ship.exe dist/
 
-          # Collect dependent DLLs from PE headers
+          # Copy dependent DLLs listed in PE headers
           DLLS=$(objdump -p dist/burn_ship.exe | awk '/DLL Name:/ {print $3}')
           for dll in $DLLS; do
             for root in /mingw64/bin /usr/bin; do
@@ -69,11 +69,11 @@ jobs:
             done
           done
 
-          # Safety net: ensure SDL2 and GnuCOBOL runtime are present
+          # Safety net: ensure SDL2 and libcob are present
           cp -n /mingw64/bin/SDL2.dll dist/ || true
           ls /mingw64/bin/libcob-*.dll | head -n1 | xargs -I{} cp -n {} dist/ || true
 
-          # Versions for reproducibility
+          # Record versions
           {
             echo "SDL2: $(pkgconf --modversion sdl2)"
             cobc -v
