@@ -6,7 +6,6 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
-
       - uses: msys2/setup-msys2@v2
         with:
           msystem: MINGW64
@@ -16,56 +15,33 @@ jobs:
             mingw-w64-x86_64-gcc
             mingw-w64-x86_64-SDL2
             mingw-w64-x86_64-binutils
-            pkgconf
-            awk
-            sed
-            findutils
             zip
 
-      # NEW: persist env to all subsequent steps
-      - name: Set env for GnuCOBOL and pkg-config
-        shell: msys2 {0}
-        run: |
-          echo "COB_CONFIG_DIR=$(cygpath -w /mingw64/share/gnucobol/config)" >> $GITHUB_ENV
-          echo "PKG_CONFIG_PATH=/mingw64/lib/pkgconfig" >> $GITHUB_ENV
-
-      - name: Build (fixed-format COBOL; no SDL2main)
+      - name: Build
         shell: msys2 {0}
         run: |
           set -euxo pipefail
-          CFLAGS="$(pkgconf --cflags sdl2 | sed 's/-Dmain=SDL_main//g') -DSDL_MAIN_HANDLED"
-          LIBS="$(pkgconf --libs-only-l sdl2 | sed 's/-lSDL2main//g')"
-          cobc -x -O2 -o burn_ship.exe main.cob sdl_expose.c ${CFLAGS} ${LIBS}
+          cobc -x -O2 -o burn_ship.exe \
+            main.cob sdl_expose.c \
+            -I/mingw64/include/SDL2 -lSDL2
           ls -al
 
-      - name: Bundle runtime DLLs (objdump-based)
+      - name: Bundle DLLs (objdump)
         shell: msys2 {0}
         run: |
           set -euxo pipefail
-          test -f burn_ship.exe
           mkdir -p dist
           cp burn_ship.exe dist/
-
           DLLS=$(objdump -p dist/burn_ship.exe | awk '/DLL Name:/ {print $3}')
           for dll in $DLLS; do
             for root in /mingw64/bin /usr/bin; do
-              if [ -f "$root/$dll" ]; then cp -n "$root/$dll" dist/; break; fi
+              [ -f "$root/$dll" ] && cp -n "$root/$dll" dist/ && break
             done
           done
-          cp -n /mingw64/bin/SDL2.dll dist/ || true
-          ls /mingw64/bin/libcob-*.dll | head -n1 | xargs -I{} cp -n {} dist/ || true
-
-          {
-            echo "SDL2: $(pkgconf --modversion sdl2)"
-            cobc -v
-            gcc --version | head -n1
-          } > dist/VERSIONS.txt
-
-          (cd dist && zip -9r ../burn_ship_win64.zip .)
+          zip -9r burn_ship_win64.zip dist
 
       - uses: actions/upload-artifact@v4
         with:
           name: burn_ship_win64
           path: burn_ship_win64.zip
-          retention-days: 90
 
