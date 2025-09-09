@@ -16,6 +16,15 @@ jobs:
             mingw-w64-x86_64-SDL2
             mingw-w64-x86_64-binutils
             zip
+            awk
+            sed
+            findutils
+
+      # NEW: make cobc find default.conf in later steps too
+      - name: Set COB_CONFIG_DIR for cobc
+        shell: msys2 {0}
+        run: |
+          echo "COB_CONFIG_DIR=$(cygpath -w /mingw64/share/gnucobol/config)" >> $GITHUB_ENV
 
       - name: Build
         shell: msys2 {0}
@@ -38,7 +47,13 @@ jobs:
               [ -f "$root/$dll" ] && cp -n "$root/$dll" dist/ && break
             done
           done
-          zip -9r burn_ship_win64.zip dist
+          # optional: include versions, but don't fail if cobc isn't in PATH
+          {
+            echo "SDL2:  $(/mingw64/bin/sdl2-config --version || true)"
+            echo "cobc:  $(cobc --version 2>/dev/null || true)"
+            echo "gcc:   $(gcc --version | head -n1)"
+          } > dist/VERSIONS.txt
+          (cd dist && zip -9r ../burn_ship_win64.zip .)
 
       - uses: actions/upload-artifact@v4
         with:
