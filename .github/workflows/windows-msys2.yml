@@ -1,0 +1,56 @@
+name: build-windows-msys2
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up MSYS2 (MINGW64)
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: true
+          install: >-
+            mingw-w64-x86_64-gnucobol
+            mingw-w64-x86_64-gcc
+            mingw-w64-x86_64-SDL2
+            pkgconf
+            zip
+            ntldd
+
+      - name: Build (cobc drives gcc)
+        shell: msys2 {0}
+        run: |
+          set -euxo pipefail
+          export PKG_CONFIG_PATH=/mingw64/lib/pkgconfig
+          cobc -x -free -O3 -flto \
+            main.cob sdl_expose.c \
+            $(pkgconf --cflags --libs sdl2)
+          mv a.exe burn_ship.exe || true
+
+      - name: Bundle runtime DLLs
+        shell: msys2 {0}
+        run: |
+          set -euxo pipefail
+          mkdir -p dist
+          cp burn_ship.exe dist/
+          ntldd -R dist/burn_ship.exe | awk '/=>/ {print $3}' | sed -e 's#\\#/#g' | while read -r dll; do
+            [ -f "$dll" ] && cp -n "$dll" dist/ || true
+          done
+          cp -n /mingw64/bin/SDL2.dll dist/ || true
+          ls /mingw64/bin/libcob-*.dll | head -n1 | xargs -I{} cp -n {} dist/ || true
+          pkgconf --modversion sdl2 > dist/VERSIONS.txt
+          cobc -v >> dist/VERSIONS.txt
+          gcc --version | head -n1 >> dist/VERSIONS.txt
+          (cd dist && zip -9r ../burn_ship_win64.zip .)
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: burn_ship_win64
+          path: burn_ship_win64.zip
+          retention-days: 90
