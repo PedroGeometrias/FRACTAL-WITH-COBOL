@@ -25,28 +25,27 @@ jobs:
             findutils
             zip
 
-      - name: Build (no SDL2main; set COB_CONFIG_DIR)
+      - name: Build (fixed-format COBOL; no SDL2main)
         shell: msys2 {0}
         run: |
           set -euxo pipefail
 
-          # Point cobc to its config (Windows-style path)
+          # Point cobc to its config (Windows-style path so it finds default.conf)
           export COB_CONFIG_DIR="$(cygpath -w /mingw64/share/gnucobol/config)"
 
           export PKG_CONFIG_PATH=/mingw64/lib/pkgconfig
           # Clean flags: remove -Dmain=SDL_main; keep SDL_MAIN_HANDLED
           CFLAGS="$(pkgconf --cflags sdl2 | sed 's/-Dmain=SDL_main//g') -DSDL_MAIN_HANDLED"
-          # Drop SDL2main from libs
           LIBS="$(pkgconf --libs-only-l sdl2 | sed 's/-lSDL2main//g')"
 
           echo "CFLAGS=${CFLAGS}"
           echo "LIBS=${LIBS}"
 
-          cobc -x -free -O2 -o burn_ship.exe \
+          # NOTE: no -free here (your source is fixed-format)
+          cobc -x -O2 -o burn_ship.exe \
             main.cob sdl_expose.c \
             ${CFLAGS} ${LIBS}
 
-          # Sanity: list outputs
           ls -al
 
       - name: Bundle runtime DLLs (objdump-based)
@@ -69,11 +68,11 @@ jobs:
             done
           done
 
-          # Safety net: ensure SDL2 and libcob are present
+          # Safety net: ensure SDL2 and GnuCOBOL runtime are present
           cp -n /mingw64/bin/SDL2.dll dist/ || true
           ls /mingw64/bin/libcob-*.dll | head -n1 | xargs -I{} cp -n {} dist/ || true
 
-          # Record versions
+          # Versions for reproducibility
           {
             echo "SDL2: $(pkgconf --modversion sdl2)"
             cobc -v
