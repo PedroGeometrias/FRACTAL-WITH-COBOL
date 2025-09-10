@@ -6,6 +6,7 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+
       - uses: msys2/setup-msys2@v2
         with:
           msystem: MINGW64
@@ -20,7 +21,7 @@ jobs:
             sed
             findutils
 
-      # NEW: make cobc find default.conf in later steps too
+      # Set COB_CONFIG_DIR for cobc
       - name: Set COB_CONFIG_DIR for cobc
         shell: msys2 {0}
         run: |
@@ -35,28 +36,39 @@ jobs:
             -I/mingw64/include/SDL2 -lSDL2
           ls -al
 
-      - name: Bundle DLLs (objdump)
+      - name: Bundle DLLs (ldd)
         shell: msys2 {0}
         run: |
           set -euxo pipefail
           mkdir -p dist
           cp burn_ship.exe dist/
-          DLLS=$(objdump -p dist/burn_ship.exe | awk '/DLL Name:/ {print $3}')
+
+          # Get DLL dependencies with ldd and copy each to dist/
+          DLLS=$(ldd dist/burn_ship.exe | awk '/=>/ { print $3 }' | grep -v '^(' | sort -u)
           for dll in $DLLS; do
-            for root in /mingw64/bin /usr/bin; do
-              [ -f "$root/$dll" ] && cp -n "$root/$dll" dist/ && break
-            done
+            if [ -f "$dll" ]; then
+              cp -n "$dll" dist/
+            else
+              echo "Warning: DLL $dll not found!"
+            fi
           done
-          # optional: include versions, but don't fail if cobc isn't in PATH
+
+          # Copy common MinGW runtime DLLs explicitly
+          for dll in /mingw64/bin/libwinpthread-1.dll /mingw64/bin/libgcc_s_seh-1.dll /mingw64/bin/libstdc++-6.dll; do
+            if [ -f "$dll" ]; then
+              cp -n "$dll" dist/
+            fi
+          done
+
           {
             echo "SDL2:  $(/mingw64/bin/sdl2-config --version || true)"
             echo "cobc:  $(cobc --version 2>/dev/null || true)"
             echo "gcc:   $(gcc --version | head -n1)"
           } > dist/VERSIONS.txt
+
           (cd dist && zip -9r ../burn_ship_win64.zip .)
 
       - uses: actions/upload-artifact@v4
         with:
           name: burn_ship_win64
           path: burn_ship_win64.zip
-
