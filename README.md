@@ -15,7 +15,7 @@ cd FRACTAL-WITH-COBOL
 cobc -x -O2 main.cob sdl_expose.c -lSDL2
 ```
 and that's basically it, If I remember everything correctly, now on windows you will have a bit more trouble.
-So I will make all the binaries available through github actions, and maybe also make a MakeFile to help
+So I will make the windows executable available on the releases, and maybe also do a MakeFile to help
 
 # What to do next:
 - As I said, I will problably make process simpler to compiler for windows users
