@@ -51,7 +51,7 @@
       *us how deeply the program should calculate the formula, giving
       *more details:w
        01 ITERATOR           PIC S9(9)  COMP-5.
-       01 MAX-ITERATOR       PIC S9(9)  COMP-5 VALUE 100.
+       01 MAX-ITERATOR       PIC S9(9)  COMP-5 VALUE 1000.
 
       *>> these variables are used to determine the complex region,
       *basically focusing only on the place where the SHIP is  
