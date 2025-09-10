@@ -19,7 +19,7 @@ So I will make the windows executable available on the releases, and maybe also 
 
 # What to do next:
 - As I said, I will problably make process simpler to compiler for windows users
-- add some sort of explorer, like a point and click zoom feature, so people can explorer the fractal
+- add some sort of explorer, like a point and click zoom feature, so people can explore the fractal
 - make it so people can also create a image from the rendered fractal
 
 
