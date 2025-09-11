@@ -29,8 +29,8 @@ and that's basically it, If I remembered everything correctly. Now on windows yo
 I made a release for the executable, you can just download it, maybe in the future I can create a makefile for windows, so it can better help people out.
 
 # What to do next:
-- As I said, I will problably make process simpler to compiler for windows users
+- As I said, I will problably make the process simpler to compile for windows users
 - add some sort of explorer, like a point and click zoom feature, so people can explore the fractal
-- make it so people can also create a image from the rendered fractal
+- make it so people can also create an image from the rendered fractal
 
 
