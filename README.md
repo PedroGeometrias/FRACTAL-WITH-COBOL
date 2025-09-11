@@ -26,7 +26,7 @@ cd FRACTAL-WITH-COBOL # moving to the place where the code is, so you can compil
 cobc -x -O2 main.cob sdl_expose.c $(sdl2-config --cflags) -lSDL2 # compiling. -x means to generate a executable, it's necessary, but the O2 flag really isn't, it just means the optimization level 
 ```
 and that's basically it, If I remembered everything correctly. Now on windows you will have a bit more trouble, so
-I will make the windows executable available on the releases, and maybe also do a MakeFile to help in the future
+I made a release for the executable, you can just download it, maybe in the future I can create a makefile for windows, so it can better help people out.
 
 # What to do next:
 - As I said, I will problably make process simpler to compiler for windows users
