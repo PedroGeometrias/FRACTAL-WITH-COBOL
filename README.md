@@ -1,4 +1,4 @@
-# FRACTAL-WITH-COBOL
+# Burning Ship Fractal in COBOL
 A pixel-accurate **Burning Ship fractal** renderer where **COBOL drives SDL2** through thin C wrappers. Fixed-point math, zero external deps beyond SDL2 and the GnuCOBOL runtime.
 
 > **Scope/claim:** As of 2025-09-09, I’m not aware of another publicly documented project that renders a fractal **directly from COBOL** via an SDL pipeline. If you know one, I’d love a link.
